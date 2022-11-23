@@ -89,6 +89,26 @@ def print_grid(arr, model, policy=False):
     print(res)
 
 
+def print_grid_arrows(arr, model):
+    res = ""
+    for row in range(model.num_rows):
+        res += "|"
+        for column in range(model.num_columns):
+            if (row, column) in model.walls:
+                val = "W"
+            elif (row, column) in model.endstates:
+                if model.current_utility[row][column] == 1:
+                    val = "+"
+                else:
+                    val = "-"
+            else:
+                val = ["↑", "→", "↓", "←"][arr[row][column]]
+            # res += " " + val[:5].ljust(5) + " |"  # format
+            res += "" + val + "|"  # format
+        res += "\n"
+    print(res)
+
+
 # def assignment_out(array):
 #     output = []
 #     for row in array:

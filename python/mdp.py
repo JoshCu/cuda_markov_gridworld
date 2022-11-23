@@ -56,7 +56,8 @@ class MDP:
                         next_utility_grid[row][column] = self.calculate_utility(
                             utility, row, column, self.policy[row][column])
             utility = copy.deepcopy(next_utility_grid)
-            helpers.print_grid(utility, self)
+            #helpers.print_grid(utility, self)
+            print(i)
         return utility
 
     def get_optimal_policy(self, utility):

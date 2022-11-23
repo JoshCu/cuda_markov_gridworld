@@ -21,5 +21,6 @@ if __name__ == "__main__":
     utility = m.value_iteration(m.current_utility, True)
     p = m.get_optimal_policy(utility)
     helpers.print_grid(utility, m)
-    helpers.print_grid(p, m, True)
+    #helpers.print_grid(p, m, True)
+    helpers.print_grid_arrows(p, m)
     # helpers.write_policy(helpers.assignment_out(p))
