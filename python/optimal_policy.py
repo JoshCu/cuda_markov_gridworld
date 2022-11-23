@@ -20,6 +20,6 @@ if __name__ == "__main__":
 
     utility = m.value_iteration(m.current_utility, True)
     p = m.get_optimal_policy(utility)
-    helpers.print_grid(utility)
-    helpers.print_grid(p, True)
+    helpers.print_grid(utility, m)
+    helpers.print_grid(p, m, True)
     # helpers.write_policy(helpers.assignment_out(p))

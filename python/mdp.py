@@ -1,35 +1,22 @@
-"""
-This file contains the main functions used to navigate, calculate utility
-   and calculate policy in a 2D MDP grid navigation problem.
-"""
-
-__author__ = 'Josh Cunningham'
-__copyright__ = 'Copyright 2022, MDP'
-__email__ = 'Josh.Cu@gmail.com'
-
 import helpers
 import copy
 
 
 class MDP:
 
-    def __init__(self, penalty=-0.04, success_chance=0.8, filename="case0.csv"):
+    def __init__(self, penalty=-0.04, success_chance=0.8, filename="../cases/case0.csv"):
         self.penalty = penalty
         self.discount = 0.95
         self.success_chance = success_chance
         # Set up the initial environment
         self.num_actions = 4
         self.actions = [(-1, 0), (0, 1), (1, 0), (0, -1)]  # Up, Right, Down, Left
-        self.num_rows = 3
-        self.num_columns = 4
         # generate blank utility grid
+        self.endstates = []
+        self.current_utility, self.num_columns, self.num_rows, self.walls, self.endstates = helpers.load_utility(
+            filename)
 
         self.start_utility = helpers.initialise_grid(self.num_columns, self.num_rows)
-        # load this in from file
-        #self.current_utility = [[0, 0, 0, 1], [0, 0, 0, -1], [0, 0, 0, 0]]
-        self.current_utility = helpers.load_utility(filename)
-        self.walls = [[1, 1]]
-        #self.policy = helpers.load_policy(filename)
 
     def move_agent(self, utility, row, column, action):
         '''
@@ -39,13 +26,10 @@ class MDP:
         move_row, move_col = self.actions[action]
         new_row, new_col = row+move_row, column+move_col
         if new_row < 0 or new_col < 0 or new_row >= self.num_rows or new_col >= self.num_columns or (
-                new_row == new_col == 1):  # collide with the boundary or the wall
+                (new_row, new_col) in self.walls):  # collide with the boundary or the wall
             return self.penalty + self.discount * utility[row][column]
-        elif new_row <= 1 and new_col == 3:
-            if new_row == 0:
-                return 1
-            else:
-                return -1
+        elif (new_row, new_col) in self.endstates:  # reach the goal
+            return self.current_utility[new_row][new_col]
         else:
             return self.penalty + self.discount * utility[new_row][new_col]
 
@@ -59,11 +43,11 @@ class MDP:
         return u
 
     def value_iteration(self, utility, optimal=False):
-        for i in range(20):
+        for i in range(200):
             next_utility_grid = self.start_utility
             for row in range(self.num_rows):
                 for column in range(self.num_columns):
-                    if (row <= 1 and column == 3) or (row == column == 1):
+                    if ((row, column) in self.walls + self.endstates):
                         continue
                     if optimal:
                         next_utility_grid[row][column] = max([self.calculate_utility(utility, row, column, action)
@@ -72,15 +56,15 @@ class MDP:
                         next_utility_grid[row][column] = self.calculate_utility(
                             utility, row, column, self.policy[row][column])
             utility = copy.deepcopy(next_utility_grid)
-            helpers.print_grid(utility)
+            helpers.print_grid(utility, self)
         return utility
 
     def get_optimal_policy(self, utility):
         '''Get the optimal policy from utility grid'''
-        policy = [[-1, -1, -1, -1] for i in range(self.num_rows)]
+        policy = helpers.initialise_grid(self.num_columns, self.num_rows, -1)
         for row in range(self.num_rows):
             for column in range(self.num_columns):
-                if (row <= 1 and column == 3) or (row == column == 1):
+                if ((row, column) in self.walls + self.endstates):
                     continue
                 # Choose the action that maximizes the utility
                 best_action, highest_utility = None, -float("inf")

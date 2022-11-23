@@ -12,7 +12,7 @@ import csv
 
 def int_to_action(n):
     '''
-    convert wacky number into up, right, down, left
+    convert number into up, right, down, left
     '''
     if n == 1:
         return 0
@@ -24,52 +24,66 @@ def int_to_action(n):
         return 3
 
 
-
-
-def initialise_grid(width, height):
+def initialise_grid(width, height, value=0):
     # initialise grid with uniform probability
     grid = []
     for i in range(height):
         grid.append([])
         for j in range(width):
-            grid[i].append(0)            
-    return grid    
+            grid[i].append(value)
+    return grid
 
 
-# def load_policy(file):
-#     '''
-#     Helper function to load the input.csv and set the frozen column
-#     Takes relative filepath and returns grid, frozen_column
-#     '''
-#     with open(file, 'r', encoding='utf-8') as f:
-#         grid = []
-#         for row_number in range(0, 3):
-#             line = f.readline().strip().split(',')
-#             row = []
-#             for column_number in range(0, 4):
-#                 row.append(int_to_action(int(line[column_number])))
-#             grid.append(row)
-#         return grid
+def load_utility(file):
+    '''
+    Helper function to load the input.csv and set the frozen column
+    Takes relative filepath and returns grid, frozen_column
+    '''
+    # looping through the file twice is not ideal but it works
+    # read first line in file as a string
+    with open(file, "r") as f:
+        first_line = f.readline()
+        columns = len(first_line.split(","))
+        rows = sum(1 for line in f) + 1
+    walls = []
+    endstates = []
+    with open(file, 'r', encoding='utf-8') as f:
+        grid = []
+        for line_number in range(rows):
+            line = f.readline().strip().split(',')
+            row = []
+            for column_number in range(columns):
+                if line[column_number] == "w":
+                    walls.append((line_number, column_number))
+                    row.append(0)
+                else:
+                    row.append(int(line[column_number]))
+                    if int(line[column_number]) != 0:
+                        endstates.append((line_number, column_number))
+            grid.append(row)
+        return grid, columns, rows, walls, endstates
 
 # Visualization
 
 
-def print_grid(arr, policy=False):
+def print_grid(arr, model, policy=False):
     res = ""
-    for row in range(3):
+    for row in range(model.num_rows):
         res += "|"
-        for column in range(4):
-            if row == 1 and column == 3:
-                val = "-1"
-            elif row == 0 and column == 3:
-                val = "+1"
+        for column in range(model.num_columns):
+            if (row, column) in model.walls:
+                val = "WALL"
+            elif (row, column) in model.endstates:
+                if model.current_utility[row][column] == 1:
+                    val = "WIN"
+                else:
+                    val = "LOSE"
             else:
                 if policy:
                     val = ["Up", "Right", "Down", "Left"][arr[row][column]]
                 else:
                     val = str(arr[row][column])
-            if row == 1 and column == 1:
-                val = "WALL"
+
             res += " " + val[:5].ljust(5) + " |"  # format
         res += "\n"
     print(res)
