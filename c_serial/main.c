@@ -109,7 +109,22 @@ int main()
                     {
                         s2 = s;
                     }
-                    float v = PENALTY + DISCOUNT * grid[s2.x][s2.y];
+                    State actionLeft = actions[(a - 1) % NUM_ACTIONS];
+                    State s3 = {i + actionLeft.x, j + actionLeft.y};
+                    if (s3.x < 0 || s3.x >= rows || s3.y < 0 || s3.y >= cols || grid[s3.x][s3.y] == 2)
+                    {
+                        s3 = s;
+                    }
+                    State actionRight = actions[(a + 1) % NUM_ACTIONS];
+                    State s4 = {i + actionRight.x, j + actionRight.y};
+                    if (s4.x < 0 || s4.x >= rows || s4.y < 0 || s4.y >= cols || grid[s4.x][s4.y] == 2)
+                    {
+                        s4 = s;
+                    }
+                    float slip_chance = (1 - SUCCESS_CHANCE) / 2;
+                    float v = SUCCESS_CHANCE * (PENALTY + DISCOUNT * grid[s2.x][s2.y]);
+                    v += slip_chance * (PENALTY + DISCOUNT * grid[s3.x][s3.y]);
+                    v += slip_chance * (PENALTY + DISCOUNT * grid[s4.x][s4.y]);
                     if (v > bestValue)
                     {
                         bestValue = v;
