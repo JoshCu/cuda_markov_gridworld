@@ -32,7 +32,7 @@ int main()
 
     // Load in file
     FILE *fp;
-    fp = fopen("case0.csv", "r");
+    fp = fopen("case10_0.csv", "r");
     if (fp == NULL)
     {
         printf("Error opening file");
@@ -158,6 +158,7 @@ void loadGrid(FILE *fp, float *grid, int rows, int cols)
 {
     char c;
     int i = 0, j = 0;
+    int skip = 0;
     for (c = getc(fp); c != EOF; c = getc(fp))
     {
         if (c == '\n')
@@ -177,11 +178,13 @@ void loadGrid(FILE *fp, float *grid, int rows, int cols)
         else if (c == '-')
         {
             *(grid + i * cols + j) = -1;
-            j++;
+            skip = 1;
         }
         else
         {
-            *(grid + i * cols + j) = c - '0';
+            if (!skip)
+                *(grid + i * cols + j) = c - '0';
+            skip = 0;
         }
     }
 }
@@ -197,4 +200,5 @@ void printGrid(float *grid, int rows, int cols)
         }
         printf("\n");
     }
+    printf("\n");
 }
