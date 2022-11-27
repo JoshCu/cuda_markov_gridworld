@@ -1,6 +1,7 @@
 // hello world in c
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 #define PENALTY -0.04
 #define DISCOUNT 0.95
@@ -25,14 +26,15 @@ State actions[NUM_ACTIONS] = {
 
 int main()
 {
-    // list of wall states
-
+    clock_t start, end;
+    double cpu_time_used;
+    start = clock();
     char c; // char to hold the input
     printf("hello world\n");
 
     // Load in file
     FILE *fp;
-    fp = fopen("case10_0.csv", "r");
+    fp = fopen("../cases/small/case60_0.csv", "r");
     if (fp == NULL)
     {
         printf("Error opening file");
@@ -70,7 +72,7 @@ int main()
     fclose(fp);
 
     // pass in grid to print function as a pointer
-    printGrid(grid[0], rows, cols);
+    // printGrid(grid[0], rows, cols);
 
     // bellman equation
     float newGrid[rows][cols];
@@ -148,7 +150,10 @@ int main()
         iter++;
         // printf("iter: %d, maxChange: %f", iter, maxChange);
     }
-    printGrid(grid[0], rows, cols);
+    // printGrid(grid[0], rows, cols);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("time: %f", cpu_time_used);
 
     return 0;
 }
