@@ -9,9 +9,9 @@
 #define NUM_ACTIONS 4
 #define SUCCESS_CHANCE 0.8
 
-void loadGrid(FILE *fp, float **grid, int rows, int cols);
-void printGrid(float **grid, int rows, int cols);
-float getBestValue(float **grid, int rows, int cols, int x, int y);
+void loadGrid(FILE *fp, float *grid, int rows, int cols);
+void printGrid(float *grid, int rows, int cols);
+float getBestValue(float *grid, int rows, int cols, int x, int y);
 
 struct State
 {
@@ -71,9 +71,7 @@ int main(int argc, char *argv[])
 
     // create matrix of grid dimensions
     // allocate the array
-    float **grid = new float *[rows];
-    for (int i = 0; i < rows; i++)
-        grid[i] = new float[cols];
+    float *grid = new float[rows * cols];
 
     // load grid from csv into matrix
     loadGrid(fp, grid, rows, cols);
@@ -82,9 +80,7 @@ int main(int argc, char *argv[])
     fclose(fp);
 
     // bellman equation
-    float **newGrid = new float *[rows];
-    for (int i = 0; i < rows; i++)
-        newGrid[i] = new float[cols];
+    float *newGrid = new float[rows * cols];
     float maxChange = 0;
     float change = 0;
     int iter = 0;
@@ -95,24 +91,24 @@ int main(int argc, char *argv[])
         {
             for (int j = 0; j < cols; j++)
             {
-                if (grid[i][j] == 1)
+                if (grid[i * cols + j] == 1)
                 {
-                    newGrid[i][j] = 1;
+                    newGrid[i * cols + j] = 1;
                     continue;
                 }
-                if (grid[i][j] == -1)
+                if (grid[i * cols + j] == -1)
                 {
-                    newGrid[i][j] = -1;
+                    newGrid[i * cols + j] = -1;
                     continue;
                 }
-                if (grid[i][j] == 2)
+                if (grid[i * cols + j] == 2)
                 {
-                    newGrid[i][j] = 2;
+                    newGrid[i * cols + j] = 2;
                     continue;
                 }
                 float bestValue = getBestValue(grid, rows, cols, i, j);
-                newGrid[i][j] = bestValue;
-                change = fabs(bestValue - grid[i][j]);
+                newGrid[i * cols + j] = bestValue;
+                change = fabs(bestValue - grid[i * cols + j]);
                 if (change > maxChange)
                 {
                     maxChange = change;
@@ -123,7 +119,7 @@ int main(int argc, char *argv[])
         {
             for (int j = 0; j < cols; j++)
             {
-                grid[i][j] = newGrid[i][j];
+                grid[i * cols + j] = newGrid[i * cols + j];
             }
         }
         iter++;
@@ -139,19 +135,14 @@ int main(int argc, char *argv[])
     printGrid(grid, rows, cols);
 
     // deallocate the array
-    for (int i = 0; i < rows; i++)
-        delete[] grid[i];
     delete[] grid;
-
-    for (int i = 0; i < rows; i++)
-        delete[] newGrid[i];
     delete[] newGrid;
 
     return 0;
 }
 
 // check values of surrounding cells and return the best value
-float getBestValue(float **grid, int rows, int cols, int i, int j)
+float getBestValue(float *grid, int rows, int cols, int i, int j)
 {
     float bestValue = -100;
     for (int a = 0; a < NUM_ACTIONS; a++)
@@ -159,26 +150,26 @@ float getBestValue(float **grid, int rows, int cols, int i, int j)
         State action = actions[a];
         State s = {i, j};
         State s2 = {i + action.x, j + action.y};
-        if (s2.x < 0 || s2.x >= rows || s2.y < 0 || s2.y >= cols || grid[s2.x][s2.y] == 2) // if out of bounds or wall
+        if (s2.x < 0 || s2.x >= rows || s2.y < 0 || s2.y >= cols || grid[s2.x * cols + s2.y] == 2) // if out of bounds or wall
         {
             s2 = s;
         }
         State actionLeft = actions[(a - 1) % NUM_ACTIONS];
         State s3 = {i + actionLeft.x, j + actionLeft.y};
-        if (s3.x < 0 || s3.x >= rows || s3.y < 0 || s3.y >= cols || grid[s3.x][s3.y] == 2)
+        if (s3.x < 0 || s3.x >= rows || s3.y < 0 || s3.y >= cols || grid[s3.x * cols + s3.y] == 2)
         {
             s3 = s;
         }
         State actionRight = actions[(a + 1) % NUM_ACTIONS];
         State s4 = {i + actionRight.x, j + actionRight.y};
-        if (s4.x < 0 || s4.x >= rows || s4.y < 0 || s4.y >= cols || grid[s4.x][s4.y] == 2)
+        if (s4.x < 0 || s4.x >= rows || s4.y < 0 || s4.y >= cols || grid[s4.x * cols + s4.y] == 2)
         {
             s4 = s;
         }
         float slip_chance = (1 - SUCCESS_CHANCE) / 2;
-        float v = SUCCESS_CHANCE * (PENALTY + DISCOUNT * grid[s2.x][s2.y]);
-        v += slip_chance * (PENALTY + DISCOUNT * grid[s3.x][s3.y]);
-        v += slip_chance * (PENALTY + DISCOUNT * grid[s4.x][s4.y]);
+        float v = SUCCESS_CHANCE * (PENALTY + DISCOUNT * grid[s2.x * cols + s2.y]);
+        v += slip_chance * (PENALTY + DISCOUNT * grid[s3.x * cols + s3.y]);
+        v += slip_chance * (PENALTY + DISCOUNT * grid[s4.x * cols + s4.y]);
         if (v > bestValue)
         {
             bestValue = v;
@@ -188,7 +179,7 @@ float getBestValue(float **grid, int rows, int cols, int i, int j)
 }
 
 // load grid function
-void loadGrid(FILE *fp, float **grid, int rows, int cols)
+void loadGrid(FILE *fp, float *grid, int rows, int cols)
 {
     char c;
     int i = 0, j = 0;
@@ -207,30 +198,30 @@ void loadGrid(FILE *fp, float **grid, int rows, int cols)
         else if (c == 'w')
         {
             // if wall, set to 2 as utility can never be higher than 1
-            grid[i][j] = 2;
+            grid[i * cols + j] = 2;
         }
         else if (c == '-')
         {
-            grid[i][j] = -1;
+            grid[i * cols + j] = -1;
             skip = 1;
         }
         else
         {
             if (!skip)
-                grid[i][j] = c - '0';
+                grid[i * cols + j] = c - '0';
             skip = 0;
         }
     }
 }
 
 // print grid using pointer
-void printGrid(float **grid, int rows, int cols)
+void printGrid(float *grid, int rows, int cols)
 {
     for (int i = 0; i < rows; i++)
     {
         for (int j = 0; j < cols; j++)
         {
-            printf("%f ", grid[i][j]);
+            printf("%f ", grid[i * cols + j]);
         }
         printf("\n");
     }
