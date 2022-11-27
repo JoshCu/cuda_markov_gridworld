@@ -15,7 +15,7 @@ void loadGrid(FILE *fp, float *grid, int rows, int cols);
 void printGrid(float *grid, int rows, int cols);
 
 __device__ float getBestValue(float *grid, int rows, int cols, int x, int y);
-__global__ void bellman(float *grid, int rows, int cols);
+__global__ void bellman(float *grid, float *newGrid, int rows, int cols, int *changeFlag);
 __device__ void dprintGrid(float *grid, int rows, int cols);
 
 struct State
@@ -89,18 +89,37 @@ int main(int argc, char *argv[])
 
     // CUDA
     float *d_grid;
+    float *d_newGrid;
     int size = rows * cols * sizeof(float);
     cudaMalloc((void **)&d_grid, size);
+    cudaMalloc((void **)&d_newGrid, size);
     cudaMemcpy(d_grid, grid, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_newGrid, newGrid, size, cudaMemcpyHostToDevice);
 
     // Call kernel
     dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
-    dim3 dimGrid(ceil((float)rows / TILE_WIDTH), ceil((float)cols / TILE_WIDTH));
+    dim3 dimGrid(ceil((float)rows / (float)TILE_WIDTH), ceil((float)cols / TILE_WIDTH));
+
+    // print grid dimensions
+    printf("grid rows: %f, grid cols: %f\n", ceil((float)rows / (float)TILE_WIDTH), ceil((float)cols / TILE_WIDTH));
 
     cudaEventRecord(start);
-    bellman<<<dimGrid, dimBlock>>>(d_grid, rows, cols);
+    // create a change flag
+    int changeFlag = 1;
+    int *d_changeFlag;
+    cudaMalloc((void **)&d_changeFlag, sizeof(int));
+    int iter = 0;
+    while (changeFlag != 0 && iter < MAX_ITER)
+    {
+        changeFlag = 0;
+        cudaMemset(d_changeFlag, 0, sizeof(int));
+        bellman<<<dimGrid, dimBlock>>>(d_grid, d_newGrid, rows, cols, d_changeFlag);
+        cudaDeviceSynchronize();
+        cudaMemcpy(&changeFlag, d_changeFlag, sizeof(int), cudaMemcpyDeviceToHost);
+        iter++;
+    }
+
     cudaEventRecord(stop);
-    cudaDeviceSynchronize();
 
     // Copy back to host
     cudaMemcpy(grid, d_grid, size, cudaMemcpyDeviceToHost);
@@ -108,10 +127,15 @@ int main(int argc, char *argv[])
     cudaEventSynchronize(stop);
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
+
     printf("Computation Time: %f\n", milliseconds / 1000);
     printf("Total Time: %f\n", ((double)(clock() - startOverhead)) / CLOCKS_PER_SEC);
 
-    // printGrid(grid, rows, cols);
+    if (rows < 20)
+        printGrid(grid, rows, cols);
+
+    // print out the number of iterations
+    printf("Iterations: %d\n", iter);
 
     // deallocate the array
     delete[] grid;
@@ -119,66 +143,53 @@ int main(int argc, char *argv[])
 
     // free the device memory
     cudaFree(d_grid);
+    cudaFree(d_changeFlag);
 
     return 0;
 }
 
-__global__ void bellman(float *grid, int rows, int cols)
+__global__ void bellman(float *grid, float *newGrid, int rows, int cols, int *changeFlag)
 {
 
-    // created shared memory copy of grid
-    // huge wase of memory
-    __shared__ float s_grid[TILE_WIDTH * TILE_WIDTH];
-    __shared__ int maxChange;
-    float change = 1;
-    // loop until change
-    int iter = 0;
+    float change = -1;
+
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     int index = i * cols + j;
-    if (index < rows * cols)
+    __syncthreads();
+    if (i < rows && j < cols)
     {
-        while (iter < MAX_ITER)
+        if (grid[index] == 2 || grid[index] == 1 || grid[index] == -1)
         {
-
-            // copy grid to shared memory
-            __syncthreads();
-            s_grid[index] = grid[index];
-            maxChange = 0;
-            change = 0;
-            __syncthreads();
-
-            if (s_grid[index] == 2 || s_grid[index] == 1 || s_grid[index] == -1)
-            {
-                grid[index] = s_grid[index];
-                break;
-            }
-
-            float bestValue = getBestValue(s_grid, rows, cols, i, j);
-            grid[index] = bestValue;
-
-            // calculate change
-            change = abs(abs(s_grid[index]) - abs(bestValue));
-
-            // if change is greater than max change, set max change to change
-            if (change > CHANGE_THRESHOLD)
-            {
-                maxChange += 1;
-            }
-
-            __syncthreads();
-
-            if (maxChange == 0)
-            {
-                break;
-            }
-            iter++;
+            newGrid[index] = grid[index];
+            return;
         }
+
+        // load edge values around tile into shared memory
+        change = 0;
+        __syncthreads();
+
+        float bestValue = getBestValue(grid, rows, cols, i, j);
+        newGrid[index] = bestValue;
+        __syncthreads();
+        // calculate change
+        change = abs(abs(grid[index]) - abs(bestValue));
+        // printf("index = %d  change: %f\n", index, change);
+        __syncthreads();
+        // if change is greater than max change, set max change to change
+        if (change > CHANGE_THRESHOLD)
+        {
+            *changeFlag = 1;
+        }
+        __syncthreads();
+        grid[index] = newGrid[index];
+        __syncthreads();
     }
-    if (index == 0)
-    {
-        printf("Iterations: %d\n", iter);
-    }
+    // if (index == 0)
+    // {
+    //     dprintGrid(newGrid, rows, cols);
+    //     printf("changeflag: %d\n", *changeFlag);
+    // }
 }
 
 // check values of surrounding cells and return the best value

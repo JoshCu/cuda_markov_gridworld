@@ -10,4 +10,4 @@ This contains the most basic implementation, takes the C serial version and just
 It's 10x slower than serial
 
 ## 1  
-Added Tiling and some small logic optimisations
+Added Tiling and some small logic optimisations, only uses global memory for operations, very expensive memory access
