@@ -104,6 +104,7 @@ int main(int argc, char *argv[])
 
     // Copy back to host
     cudaMemcpy(grid, d_grid, size, cudaMemcpyDeviceToHost);
+    cudaDeviceSynchronize();
     cudaEventSynchronize(stop);
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
@@ -129,35 +130,27 @@ __global__ void bellman(float *grid, int rows, int cols)
     // huge wase of memory
     __shared__ float s_grid[BLOCK_SIZE];
     __shared__ int maxChange;
-    float change = 0;
+    float change = 1;
     // loop until change
     int iter = 0;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     int index = i * cols + j;
-    if (i < rows && j < cols)
+    if (index < rows * cols)
     {
         while (iter < MAX_ITER)
         {
 
             // copy grid to shared memory
-
+            __syncthreads();
             s_grid[index] = grid[index];
+            maxChange = 0;
+            change = 0;
             __syncthreads();
 
-            if (s_grid[index] == 1)
+            if (s_grid[index] == 2 || s_grid[index] == 1 || s_grid[index] == -1)
             {
-                grid[index] = 1;
-                break;
-            }
-            if (s_grid[index] == -1)
-            {
-                grid[index] = -1;
-                break;
-            }
-            if (s_grid[index] == 2)
-            {
-                grid[index] = 2;
+                grid[index] = s_grid[index];
                 break;
             }
 
@@ -170,23 +163,12 @@ __global__ void bellman(float *grid, int rows, int cols)
             // if change is greater than max change, set max change to change
             if (change > CHANGE_THRESHOLD)
             {
-                atomicAdd(&maxChange, 1);
+                maxChange += 1;
             }
 
             __syncthreads();
 
-            // equivalent to maxChange < 0.0001
-            if (threadIdx.x + threadIdx.y == 0)
-            {
-                dprintGrid(s_grid, rows, cols);
-                dprintGrid(grid, rows, cols);
-                printf("Iterations: %d, Max Change: %d\n", iter, maxChange);
-            }
-            if (maxChange > 0)
-            {
-                maxChange = 0;
-            }
-            else
+            if (maxChange == 0)
             {
                 break;
             }
@@ -195,7 +177,7 @@ __global__ void bellman(float *grid, int rows, int cols)
     }
     if (threadIdx.x + threadIdx.y == 0)
     {
-        printf("Iterations: %d, Max Change: %d\n", iter, maxChange);
+        printf("Iterations: %d\n", iter);
     }
 }
 
