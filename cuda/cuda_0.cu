@@ -24,8 +24,11 @@ struct State
 
 int main(int argc, char *argv[])
 {
-    clock_t startOverhead, startComputation;
+    clock_t startOverhead;
     startOverhead = clock();
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
     char c; // char to hold the input
 
     // get file input from args
@@ -78,7 +81,6 @@ int main(int argc, char *argv[])
     // pass in grid to print function as a pointer
     // printGrid(grid, rows, cols);
     printf("Overhead Time: %f\n", ((double)(clock() - startOverhead)) / CLOCKS_PER_SEC);
-    startComputation = clock();
 
     // bellman equation
     float *newGrid = new float[rows * cols];
@@ -97,13 +99,18 @@ int main(int argc, char *argv[])
     // Call kernel
     dim3 dimGrid(1, 1);
     dim3 dimBlock(rows, cols);
+
+    cudaEventRecord(start);
     bellman<<<dimGrid, dimBlock>>>(d_grid, rows, cols);
+    cudaEventRecord(stop);
     cudaDeviceSynchronize();
 
     // Copy back to host
     cudaMemcpy(grid, d_grid, size, cudaMemcpyDeviceToHost);
-
-    printf("Computation Time: %f\n", ((double)(clock() - startComputation)) / CLOCKS_PER_SEC);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    printf("Computation Time: %f\n", milliseconds / 1000);
     printf("Total Time: %f\n", ((double)(clock() - startOverhead)) / CLOCKS_PER_SEC);
 
     // printGrid(grid, rows, cols);
