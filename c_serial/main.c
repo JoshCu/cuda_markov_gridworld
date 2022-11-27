@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    printf("iterations: %d\n", iter);
     clock_gettime(CLOCK_MONOTONIC, &endComputation);
     double time_taken;
     time_taken = (endOverhead.tv_sec - startOverhead.tv_sec) * 1e9;
