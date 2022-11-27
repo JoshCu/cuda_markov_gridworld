@@ -8,3 +8,6 @@ GPU GeForce RTX 3080, Same speeds as reference GPU
 ## 0  
 This contains the most basic implementation, takes the C serial version and just assigns one thread per grid location with no further optimisation.  
 It's 10x slower than serial
+
+## 1  
+Added Tiling and some small logic optimisations
