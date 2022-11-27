@@ -8,7 +8,7 @@
 #define MAX_ITER 1000
 #define NUM_ACTIONS 4
 #define SUCCESS_CHANCE 0.8
-#define TILE_WIDTH 4
+#define TILE_WIDTH 32
 #define CHANGE_THRESHOLD 0.0001
 
 void loadGrid(FILE *fp, float *grid, int rows, int cols);

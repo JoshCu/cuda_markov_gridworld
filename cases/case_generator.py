@@ -65,6 +65,13 @@ def make_grid(rows, columns, number_of_wins, number_of_losses, number_of_walls):
 if __name__ == "__main__":
 
     for i in range(10, 101, 10):
+        print(f"generating case {i}")
         for j in range(10):
             grid = make_grid(i, i, 1, 1, (i/2)**2)
             write_grid(grid, f"./small/case{i}_{j}.csv")
+
+    for i in range(100, 501, 100):
+        print(f"generating case {i}")
+        for j in range(10):
+            grid = make_grid(i, i, 1, 1, (i/2)**2)
+            write_grid(grid, f"./large/case{i}_{j}.csv")
