@@ -9,12 +9,14 @@
 #define NUM_ACTIONS 4
 #define SUCCESS_CHANCE 0.8
 #define BLOCK_SIZE 1024
+#define CHANGE_THRESHOLD 0.0001
 
 void loadGrid(FILE *fp, float *grid, int rows, int cols);
 void printGrid(float *grid, int rows, int cols);
 
 __device__ float getBestValue(float *grid, int rows, int cols, int x, int y);
 __global__ void bellman(float *grid, int rows, int cols);
+__device__ void dprintGrid(float *grid, int rows, int cols);
 
 struct State
 {
@@ -85,11 +87,6 @@ int main(int argc, char *argv[])
     // bellman equation
     float *newGrid = new float[rows * cols];
 
-    // TODO FIX THIS
-    // float maxChange = 0;
-    // float change = 0;
-    // int iter = 0;
-
     // CUDA
     float *d_grid;
     int size = rows * cols * sizeof(float);
@@ -135,59 +132,70 @@ __global__ void bellman(float *grid, int rows, int cols)
     float change = 0;
     // loop until change
     int iter = 0;
-    while (iter < MAX_ITER)
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    int index = i * cols + j;
+    if (i < rows && j < cols)
     {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        int j = blockIdx.y * blockDim.y + threadIdx.y;
-        int index = i * cols + j;
-
-        // copy grid to shared memory
-
-        s_grid[index] = grid[index];
-        __syncthreads();
-
-        if (i < rows && j < cols)
+        while (iter < MAX_ITER)
         {
+
+            // copy grid to shared memory
+
+            s_grid[index] = grid[index];
+            __syncthreads();
+
             if (s_grid[index] == 1)
             {
                 grid[index] = 1;
-                return;
+                break;
             }
             if (s_grid[index] == -1)
             {
                 grid[index] = -1;
-                return;
+                break;
             }
             if (s_grid[index] == 2)
             {
                 grid[index] = 2;
-                return;
+                break;
             }
+
             float bestValue = getBestValue(s_grid, rows, cols, i, j);
             grid[index] = bestValue;
-        }
-        // calculate change
-        change = abs(grid[index] - s_grid[index]);
 
-        // atomic max doesn't work with floats
-        change *= 100000;
-        int changeInt = (int)change;
+            // calculate change
+            change = abs(abs(s_grid[index]) - abs(bestValue));
 
-        // update max change atmomically
-        atomicMax(&maxChange, changeInt);
+            // if change is greater than max change, set max change to change
+            if (change > CHANGE_THRESHOLD)
+            {
+                atomicAdd(&maxChange, 1);
+            }
 
-        __syncthreads();
+            __syncthreads();
 
-        iter++;
-        // equivalent to maxChange < 0.0001
-        if (maxChange < 10)
-        {
-            break;
+            // equivalent to maxChange < 0.0001
+            if (threadIdx.x + threadIdx.y == 0)
+            {
+                dprintGrid(s_grid, rows, cols);
+                dprintGrid(grid, rows, cols);
+                printf("Iterations: %d, Max Change: %d\n", iter, maxChange);
+            }
+            if (maxChange > 0)
+            {
+                maxChange = 0;
+            }
+            else
+            {
+                break;
+            }
+            iter++;
         }
     }
-    if (threadIdx.x == 0)
+    if (threadIdx.x + threadIdx.y == 0)
     {
-        printf("Iterations: %d, Max Change: %d", iter, maxChange);
+        printf("Iterations: %d, Max Change: %d\n", iter, maxChange);
     }
 }
 
@@ -271,6 +279,20 @@ void loadGrid(FILE *fp, float *grid, int rows, int cols)
 
 // print grid using pointer
 void printGrid(float *grid, int rows, int cols)
+{
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            printf("%f ", grid[i * cols + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+// print grid using pointer
+__device__ void dprintGrid(float *grid, int rows, int cols)
 {
     for (int i = 0; i < rows; i++)
     {
