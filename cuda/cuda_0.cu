@@ -131,6 +131,8 @@ __global__ void bellman(float *grid, int rows, int cols)
     // created shared memory copy of grid
     // huge wase of memory
     __shared__ float s_grid[BLOCK_SIZE];
+    __shared__ int maxChange;
+    float change = 0;
     // loop until change
     int iter = 0;
     while (iter < MAX_ITER)
@@ -140,6 +142,7 @@ __global__ void bellman(float *grid, int rows, int cols)
         int index = i * cols + j;
 
         // copy grid to shared memory
+
         s_grid[index] = grid[index];
         __syncthreads();
 
@@ -163,8 +166,28 @@ __global__ void bellman(float *grid, int rows, int cols)
             float bestValue = getBestValue(s_grid, rows, cols, i, j);
             grid[index] = bestValue;
         }
+        // calculate change
+        change = abs(grid[index] - s_grid[index]);
+
+        // atomic max doesn't work with floats
+        change *= 100000;
+        int changeInt = (int)change;
+
+        // update max change atmomically
+        atomicMax(&maxChange, changeInt);
+
         __syncthreads();
+
         iter++;
+        // equivalent to maxChange < 0.0001
+        if (maxChange < 10)
+        {
+            break;
+        }
+    }
+    if (threadIdx.x == 0)
+    {
+        printf("Iterations: %d, Max Change: %d", iter, maxChange);
     }
 }
 
