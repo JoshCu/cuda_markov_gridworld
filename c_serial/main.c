@@ -27,9 +27,8 @@ State actions[NUM_ACTIONS] = {
 
 int main(int argc, char *argv[])
 {
-    clock_t start, end;
-    double cpu_time_used;
-    start = clock();
+    clock_t startOverhead, startComputation;
+    startOverhead = clock();
     char c; // char to hold the input
 
     // get file input from args
@@ -79,8 +78,9 @@ int main(int argc, char *argv[])
     fclose(fp);
 
     // pass in grid to print function as a pointer
-    printGrid(grid[0], rows, cols);
-
+    // printGrid(grid[0], rows, cols);
+    printf("Overhead Time: %f\n", ((double)(clock() - startOverhead)) / CLOCKS_PER_SEC);
+    startComputation = clock();
     // bellman equation
     float newGrid[rows][cols];
     float maxChange = 0;
@@ -130,11 +130,9 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("time: %f\n", cpu_time_used);
-    printGrid(grid[0], rows, cols);
+    printf("Computation Time: %f\n", ((double)(clock() - startComputation)) / CLOCKS_PER_SEC);
+    printf("Total Time: %f\n", ((double)(clock() - startOverhead)) / CLOCKS_PER_SEC);
+    // printGrid(grid[0], rows, cols);
     return 0;
 }
 
