@@ -27,8 +27,8 @@ State actions[NUM_ACTIONS] = {
 
 int main(int argc, char *argv[])
 {
-    clock_t startOverhead, startComputation;
-    startOverhead = clock();
+    struct timespec startOverhead, startComputation, endOverhead, endComputation;
+    clock_gettime(CLOCK_MONOTONIC, &startOverhead);
     char c; // char to hold the input
 
     // get file input from args
@@ -79,8 +79,10 @@ int main(int argc, char *argv[])
 
     // pass in grid to print function as a pointer
     // printGrid(grid[0], rows, cols);
-    printf("Overhead Time: %f\n", ((double)(clock() - startOverhead)) / CLOCKS_PER_SEC);
-    startComputation = clock();
+
+    clock_gettime(CLOCK_MONOTONIC, &endOverhead);
+    clock_gettime(CLOCK_MONOTONIC, &startComputation);
+
     // bellman equation
     float newGrid[rows][cols];
     float maxChange = 0;
@@ -130,8 +132,17 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    printf("Computation Time: %f\n", ((double)(clock() - startComputation)) / CLOCKS_PER_SEC);
-    printf("Total Time: %f\n", ((double)(clock() - startOverhead)) / CLOCKS_PER_SEC);
+    clock_gettime(CLOCK_MONOTONIC, &endComputation);
+    double time_taken;
+    time_taken = (endOverhead.tv_sec - startOverhead.tv_sec) * 1e9;
+    time_taken = (time_taken + (endOverhead.tv_nsec - startOverhead.tv_nsec)) * 1e-9;
+    printf("Overhead Time: %f\n", time_taken);
+    time_taken = (endComputation.tv_sec - startComputation.tv_sec) * 1e9;
+    time_taken = (time_taken + (endComputation.tv_nsec - startComputation.tv_nsec)) * 1e-9;
+    printf("Computation Time: %f\n", time_taken);
+    time_taken = (endComputation.tv_sec - startOverhead.tv_sec) * 1e9;
+    time_taken = (time_taken + (endComputation.tv_nsec - startOverhead.tv_nsec)) * 1e-9;
+    printf("Total Time: %f\n", time_taken);
     // printGrid(grid[0], rows, cols);
     return 0;
 }
