@@ -11,6 +11,7 @@
 
 void loadGrid(FILE *fp, float *grid, int rows, int cols);
 void printGrid(float *grid, int rows, int cols);
+float getBestValue(float *grid, int rows, int cols, int x, int y);
 
 struct State
 {
@@ -24,17 +25,23 @@ State actions[NUM_ACTIONS] = {
     {1, 0},   // down
     {0, -1}}; // left
 
-int main()
+int main(int argc, char *argv[])
 {
     clock_t start, end;
     double cpu_time_used;
     start = clock();
     char c; // char to hold the input
-    printf("hello world\n");
+
+    // get file input from args
+    if (argc != 2)
+    {
+        printf("filename argument expected.\n");
+        exit(1);
+    }
 
     // Load in file
     FILE *fp;
-    fp = fopen("../cases/small/case60_0.csv", "r");
+    fp = fopen(argv[1], "r");
     if (fp == NULL)
     {
         printf("Error opening file");
@@ -72,7 +79,7 @@ int main()
     fclose(fp);
 
     // pass in grid to print function as a pointer
-    // printGrid(grid[0], rows, cols);
+    printGrid(grid[0], rows, cols);
 
     // bellman equation
     float newGrid[rows][cols];
@@ -101,37 +108,7 @@ int main()
                     newGrid[i][j] = 2;
                     continue;
                 }
-                float bestValue = -100;
-                for (int a = 0; a < NUM_ACTIONS; a++)
-                {
-                    State action = actions[a];
-                    State s = {i, j};
-                    State s2 = {i + action.x, j + action.y};
-                    if (s2.x < 0 || s2.x >= rows || s2.y < 0 || s2.y >= cols || grid[s2.x][s2.y] == 2)
-                    {
-                        s2 = s;
-                    }
-                    State actionLeft = actions[(a - 1) % NUM_ACTIONS];
-                    State s3 = {i + actionLeft.x, j + actionLeft.y};
-                    if (s3.x < 0 || s3.x >= rows || s3.y < 0 || s3.y >= cols || grid[s3.x][s3.y] == 2)
-                    {
-                        s3 = s;
-                    }
-                    State actionRight = actions[(a + 1) % NUM_ACTIONS];
-                    State s4 = {i + actionRight.x, j + actionRight.y};
-                    if (s4.x < 0 || s4.x >= rows || s4.y < 0 || s4.y >= cols || grid[s4.x][s4.y] == 2)
-                    {
-                        s4 = s;
-                    }
-                    float slip_chance = (1 - SUCCESS_CHANCE) / 2;
-                    float v = SUCCESS_CHANCE * (PENALTY + DISCOUNT * grid[s2.x][s2.y]);
-                    v += slip_chance * (PENALTY + DISCOUNT * grid[s3.x][s3.y]);
-                    v += slip_chance * (PENALTY + DISCOUNT * grid[s4.x][s4.y]);
-                    if (v > bestValue)
-                    {
-                        bestValue = v;
-                    }
-                }
+                float bestValue = getBestValue(grid[0], rows, cols, i, j);
                 newGrid[i][j] = bestValue;
                 change = fabs(bestValue - grid[i][j]);
                 if (change > maxChange)
@@ -148,14 +125,54 @@ int main()
             }
         }
         iter++;
-        // printf("iter: %d, maxChange: %f", iter, maxChange);
+        if (maxChange < 0.0001)
+        {
+            break;
+        }
     }
-    // printGrid(grid[0], rows, cols);
+
     end = clock();
     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("time: %f", cpu_time_used);
-
+    printf("time: %f\n", cpu_time_used);
+    printGrid(grid[0], rows, cols);
     return 0;
+}
+
+// check values of surrounding cells and return the best value
+float getBestValue(float *grid, int rows, int cols, int i, int j)
+{
+    float bestValue = -100;
+    for (int a = 0; a < NUM_ACTIONS; a++)
+    {
+        State action = actions[a];
+        State s = {i, j};
+        State s2 = {i + action.x, j + action.y};
+        if (s2.x < 0 || s2.x >= rows || s2.y < 0 || s2.y >= cols || *(grid + s2.x * cols + s2.y) == 2) // grid[s2.x][s2.y] == 2)
+        {
+            s2 = s;
+        }
+        State actionLeft = actions[(a - 1) % NUM_ACTIONS];
+        State s3 = {i + actionLeft.x, j + actionLeft.y};
+        if (s3.x < 0 || s3.x >= rows || s3.y < 0 || s3.y >= cols || *(grid + s3.x * cols + s3.y) == 2)
+        {
+            s3 = s;
+        }
+        State actionRight = actions[(a + 1) % NUM_ACTIONS];
+        State s4 = {i + actionRight.x, j + actionRight.y};
+        if (s4.x < 0 || s4.x >= rows || s4.y < 0 || s4.y >= cols || *(grid + s4.x * cols + s4.y) == 2)
+        {
+            s4 = s;
+        }
+        float slip_chance = (1 - SUCCESS_CHANCE) / 2;
+        float v = SUCCESS_CHANCE * (PENALTY + DISCOUNT * *(grid + s2.x * cols + s2.y));
+        v += slip_chance * (PENALTY + DISCOUNT * *(grid + s3.x * cols + s3.y));
+        v += slip_chance * (PENALTY + DISCOUNT * *(grid + s4.x * cols + s4.y));
+        if (v > bestValue)
+        {
+            bestValue = v;
+        }
+    }
+    return bestValue;
 }
 
 // load grid function
