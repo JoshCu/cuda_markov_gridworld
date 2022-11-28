@@ -131,8 +131,8 @@ int main(int argc, char *argv[])
     printf("Computation Time: %f\n", milliseconds / 1000);
     printf("Total Time: %f\n", ((double)(clock() - startOverhead)) / CLOCKS_PER_SEC);
 
-    if (rows < 20)
-        printGrid(grid, rows, cols);
+    // if (rows < 20)
+    //     printGrid(grid, rows, cols);
 
     // print out the number of iterations
     printf("Iterations: %d\n", iter);
